@@ -1,27 +1,34 @@
-import { Geist, Geist_Mono } from "next/font/google";
+import "@/app/_styles/globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+import { Josefin_Sans } from "next/font/google";
+import Header from "./_components/Header";
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const josefin = Josefin_Sans({
   subsets: ["latin"],
+  display: "swap",
+  weight: ["100", "200", "300", "400", "500", "600", "700"],
 });
 
 export const metadata = {
-  title: "Akyaka Resort",
-  description: "Akyaka Resort ",
+  title: {
+    template: "%s | Akyaka Resort",
+    default: "Welcome Akyaka Resort",
+  },
+  description: "Akyaka Resort",
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang='en'>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`bg-primary-950 text-primary-100 min-h-screen flex flex-col antialiased relative ${josefin.className}`}
       >
-        {children}
+        <Header />
+        <div className=' flex-1 px-8 py-12 h-full grid'>
+          <main className='max-w-7xl mx-auto w-full'>{children}</main>
+        </div>
+
+        <footer>Akyaka Resort</footer>
       </body>
     </html>
   );
