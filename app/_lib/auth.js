@@ -23,6 +23,11 @@ const authConfig = {
         return false;
       }
     },
+    async session({ session, user }) {
+      const guest = await getGuest(session.user.email);
+      session.user.guestId = guest.id;
+      return session;
+    },
   },
   pages: {
     signIn: "/login",
