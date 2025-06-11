@@ -6,6 +6,12 @@ import { supabase } from "./supabase";
 import { getBookings } from "./data-service";
 import { redirect } from "next/navigation";
 
+import { isWithinInterval, parseISO } from "date-fns";
+
+function sanitizeInput(input) {
+  return input.replace(/[<>]/g, "").slice(0, 1000).trim();
+}
+
 export async function updateGuest(formData) {
   const session = await auth();
   if (!session) throw new Error("You must be logged in");
@@ -31,8 +37,72 @@ export async function updateGuest(formData) {
   revalidatePath("/account/profile");
 }
 
-export async function deleteReservation(bookingId) {
-  // throw new Error("Test optimistic Error");
+export async function createBooking(bookingData, formData) {
+  const session = await auth();
+  if (!session) throw new Error("You must be logged in");
+
+  const startDate = new Date(bookingData.startDate);
+  const endDate = new Date(bookingData.endDate);
+  if (startDate >= endDate) throw new Error("Invalid date range");
+
+  const { data: existingBookings, error: bookingFetchError } = await supabase
+    .from("bookings")
+    .select("startDate, endDate")
+    .eq("cabinId", bookingData.cabinId);
+
+  if (bookingFetchError) {
+    console.error(bookingFetchError);
+    throw new Error("Error checking availability");
+  }
+
+  const overlaps = existingBookings.some((booking) => {
+    const bookedStart = new Date(booking.startDate);
+    const bookedEnd = new Date(booking.endDate);
+
+    return (
+      isWithinInterval(startDate, { start: bookedStart, end: bookedEnd }) ||
+      isWithinInterval(endDate, { start: bookedStart, end: bookedEnd }) ||
+      (startDate <= bookedStart && endDate >= bookedEnd)
+    );
+  });
+
+  if (overlaps) throw new Error("Selected dates are already booked");
+
+  const rawFormValues = Object.fromEntries(formData.entries());
+  const formValues = Object.fromEntries(
+    Object.entries(rawFormValues).filter(([key]) => !key.startsWith("$"))
+  );
+
+  const rawObservations = formData.get("observations")?.toString() ?? "";
+  const observations = sanitizeInput(rawObservations);
+
+  const newBooking = {
+    ...bookingData,
+    ...formValues,
+    startDate: bookingData.startDate.toISOString(),
+    endDate: bookingData.endDate.toISOString(),
+    guestId: session.user.guestId,
+    numGuests: Number(formData.get("numGuests")),
+    extrasPrice: 0,
+    totalPrice: bookingData.cabinPrice,
+    observations,
+    isPaid: false,
+    hasBreakfast: false,
+    status: "unconfirmed",
+  };
+
+  const { error } = await supabase.from("bookings").insert([newBooking]);
+
+  if (error) {
+    console.error(error);
+    throw new Error("Booking could not be created");
+  }
+
+  revalidatePath(`/cabins/${bookingData.cabinId}`);
+  redirect("/cabins/thankyou");
+}
+
+export async function deleteBooking(bookingId) {
   const session = await auth();
   if (!session) throw new Error("You must be logged in");
 
@@ -74,10 +144,6 @@ export async function deleteReservation(bookingId) {
 //   //   throw new Error("Guest could not be updated");
 //   // }
 // }
-
-function sanitizeInput(input) {
-  return input.replace(/[<>]/g, "").slice(0, 1000).trim();
-}
 
 export async function updateBooking(formData) {
   const session = await auth();

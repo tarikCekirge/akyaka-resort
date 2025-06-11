@@ -1,12 +1,30 @@
 "use client";
 
 import { useReservation } from "@/app/_components/ReservationContext";
+import { differenceInDays } from "date-fns";
 import Image from "next/image";
+import { createBooking } from "../_lib/actions";
+import UpdateButton from "./UpdateButton";
 
 function ReservationForm({ cabin, user }) {
-  const { range } = useReservation();
+  const { range, resetRange } = useReservation();
 
-  const { maxCapacity } = cabin;
+  const { maxCapacity, regularPrice, discount, id } = cabin;
+  const startDate = range.from;
+  const endDate = range.to;
+
+  const numNights = differenceInDays(endDate, startDate);
+  const cabinPrice = numNights * (regularPrice - discount);
+
+  const bookingData = {
+    startDate,
+    endDate,
+    numNights,
+    cabinPrice,
+    cabinId: id,
+  };
+
+  const createBookingWithdata = createBooking.bind(null, bookingData);
 
   return (
     <div className='scale-[1.01]'>
@@ -29,7 +47,14 @@ function ReservationForm({ cabin, user }) {
           </div>
         )}
       </div>
-      <form className='bg-primary-900 py-10 px-16 text-lg flex gap-5 flex-col'>
+      <form
+        // action={createBookingWithdata}
+        action={async (formData) => {
+          await createBookingWithdata(formData);
+          resetRange();
+        }}
+        className='bg-primary-900 py-10 px-16 text-lg flex gap-5 flex-col'
+      >
         <div className='space-y-2'>
           <label htmlFor='numGuests'>How many guests?</label>
           <select
@@ -54,6 +79,7 @@ function ReservationForm({ cabin, user }) {
             Anything we should know about your stay?
           </label>
           <textarea
+            required
             name='observations'
             id='observations'
             className='px-5 py-3 bg-primary-200 text-primary-800 w-full shadow-sm rounded-sm'
@@ -62,11 +88,15 @@ function ReservationForm({ cabin, user }) {
         </div>
 
         <div className='flex justify-end items-center gap-6'>
-          <p className='text-primary-300 text-base'>Start by selecting dates</p>
-
-          <button className='bg-accent-500 px-8 py-4 text-primary-800 font-semibold hover:bg-accent-600 transition-all disabled:cursor-not-allowed disabled:bg-gray-500 disabled:text-gray-300'>
-            Reserve now
-          </button>
+          {!(startDate && endDate) ? (
+            <>
+              <p className='text-primary-300 text-base'>
+                Start by selecting dates
+              </p>
+            </>
+          ) : (
+            <UpdateButton loadingText='Please Wait'>Reserve now</UpdateButton>
+          )}
         </div>
       </form>
     </div>

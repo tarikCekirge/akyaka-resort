@@ -1,7 +1,7 @@
 "use client";
 import { useState, useOptimistic, useCallback } from "react";
 import ReservationCard from "./ReservationCard";
-import { deleteReservation } from "../_lib/actions";
+import { deleteBooking } from "../_lib/actions";
 
 export default function ReservationList({ bookings }) {
   const [realBookings, setRealBookings] = useState(bookings);
@@ -30,7 +30,7 @@ export default function ReservationList({ bookings }) {
       });
 
       try {
-        await deleteReservation(bookingId);
+        await deleteBooking(bookingId);
       } catch (err) {
         console.error(err);
         // Rollback
